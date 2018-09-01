@@ -11,12 +11,16 @@ int main(int argc, char const *argv[])
     //     return 1;
     // }
 
-    std::ifstream inFile;
-    inFile.open("00_sample.in");
+    // std::ifstream inFile;
+    // // inFile.open("00_sample.in");
     // inFile.open(std::string(argv[1]).c_str());
 
     Grid grid;
-    grid.parse(inFile);
+    grid.parse();
+
+    std::string solution = grid.solve();
+
+    std::cout << solution << std::endl;
 
     return 0;
 }

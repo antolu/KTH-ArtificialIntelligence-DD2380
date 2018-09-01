@@ -4,17 +4,17 @@ Grid::Grid()
 {
 }
 
-void Grid::parse(std::ifstream &inStream)
+void Grid::parse()
 {
 
     std::string line;
     int row = 0;
     int column = 0;
 
-    int player[2];
+    playerCell = Cell(false, 0,0);
 
     // Parse the input, determine which coordinates are roads
-    while (std::getline(inStream, line))
+    while (std::getline(std::cin, line))
     {
         // std::cout << line << std::endl;
         for (char c : line)
@@ -25,9 +25,8 @@ void Grid::parse(std::ifstream &inStream)
             }
             else if (c == '@')
             {
-                player[0] = row;
-                player[1] = column;
                 grid[std::make_pair(row, column)] = Cell(true, row, column);
+                playerCell = grid.at(std::make_pair(row, column));
             }
             else if (c == '.')
             {
@@ -49,14 +48,18 @@ void Grid::parse(std::ifstream &inStream)
     maxRow = row - 1;
     grid[std::make_pair(maxRow, maxColumn)] = Cell(true, maxRow, maxColumn);
 
-    printMap();
+    // printMap();
+}
 
-    std::string solution = walk(grid[std::make_pair(player[0], player[1])], -1);
+std::string Grid::solve() {
+    std::string solution = walk(playerCell, -1);
 
-    if (solution == "")
-        std::cout << "FAIL" << std::endl;
+    if (solution == "fail")
+        return "no path";
+    else if (solution == "")
+        return solution;
     else
-        std::cout << parseResult(solution) << std::endl;
+        return parseResult(solution);
 }
 
 void Grid::printMap()
@@ -77,30 +80,32 @@ void Grid::printMap()
         {
             std::cout << grid.at(std::make_pair(row, column)).getIsGoal();
         }
-        std::cout << std::endl
-                  << std::endl;
+        std::cout << std::endl;
     }
+    std::cout << std::endl;
 }
 
 std::string Grid::walk(Cell &cell, int origin)
 {
-    std::cout << "R" << cell.rowi << " "
-              << "C" << cell.columni << std::endl;
+    // std::cout << "R" << cell.rowi << " "
+    //           << "C" << cell.columni << std::endl;
     if (visitedMap[std::make_pair(cell.rowi, cell.columni)] == true)
-        return "visited";
+        return "";
 
     visitedMap[std::make_pair(cell.rowi, cell.columni)] = true;
 
     std::vector<Cell> nearCells = getNeighbors(cell);
 
     std::string goal = "";
+    if (cell.getIsGoal()) return "";
+    if (playerCell.rowi == 0 && playerCell.columni == 0) return "";
     for (int i = 0; i < 4; i++)
     {
         Cell newCell = nearCells.at(i);
-        std::cout << newCell.rowi << " " << newCell.columni << std::endl;
+        // std::cout << newCell.rowi << " " << newCell.columni << std::endl;
         if (newCell.getIsGoal())
         {
-            std::cout << "GOAL" << std::endl;
+            // std::cout << "GOAL" << std::endl;
             return "GOAL" + std::to_string(i);
         }
         if (newCell.getIsRoad() && !visitedMap[std::make_pair(newCell.rowi, newCell.columni)])
@@ -110,18 +115,18 @@ std::string Grid::walk(Cell &cell, int origin)
             {
                 return std::to_string(origin) + " " + std::to_string(i) + " " + goal.substr(4, 1);
             }
-            else if (goal != "")
+            else if (goal != "fail")
             {
                 return std::to_string(origin) + " " + goal;
             }
-            else if (goal == "") {
+            else if (goal == "fail") {
                 continue;
             }
             else
-                return goal;
+                return "fail";
         }
     }
-    return goal;
+    return "fail";
 }
 
 std::vector<Cell> Grid::getNeighbors(Cell cell)

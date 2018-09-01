@@ -22,12 +22,14 @@ class Grid
     std::vector<Cell> getNeighbors(Cell cell);
     int maxRow = 0;
     int maxColumn = 0;
+    Cell playerCell;
     void printMap();
     std::string parseResult(std::string input);
 
   public:
     Grid();
-    void parse(std::ifstream & inStream);
+    void parse();
+    std::string solve();
 };
 
 #endif
