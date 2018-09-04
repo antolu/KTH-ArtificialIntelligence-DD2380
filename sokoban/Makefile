@@ -1,9 +1,8 @@
-APP=appname
+APP=sokoban
 
-SRC_DIR=src
+SRC_DIR=.
 INC_DIR=inc
-OBJ_DIR=obj
-BIN_DIR=bin
+BUILD_DIR=build
 
 CC=g++
 LD=g++
@@ -14,37 +13,35 @@ INCFLAGS=-I$(INC_DIR)
 
 SOURCES=$(wildcard $(SRC_DIR)/*.cpp)
 HEADERS=$(wildcard $(INC_DIR)/*.hpp)
-OBJECTS=$(SOURCES:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
-DEPENDS=$(OBJ_DIR)/.depends
+OBJECTS=$(SOURCES:$(SRC_DIR)/%.cpp=$(BUILD_DIR)/%.o)
+DEPENDS=$(BUILD_DIR)/.depends
 
 
 .PHONY: all 
-all: $(BIN_DIR)/$(APP)
+all: $(BUILD_DIR)/$(APP)
 
 .PHONY: debug
 debug: CFLAGS+=$(DFLAGS)
 debug: all 
 
 
-$(BIN_DIR)/$(APP): $(OBJECTS) | $(BIN_DIR)
+$(BUILD_DIR)/$(APP): $(OBJECTS) | $(BUILD_DIR)
 	$(LD) $(LFLGAS) -o $@ $^
 
-$(OBJ_DIR)/%.o: | $(OBJ_DIR)
+$(BUILD_DIR)/%.o: | $(BUILD_DIR)
 	$(CC) $(CFLAGS) $(INCFLAGS) -o $@ $<
 
-$(DEPENDS): $(SOURCES) | $(OBJ_DIR)
-	$(CC) $(INCFLAGS) -MM $(SOURCES) | sed -e 's!^!$(OBJ_DIR)/!' >$@
+$(DEPENDS): $(SOURCES) | $(BUILD_DIR)
+	$(CC) $(INCFLAGS) -MM $(SOURCES) | sed -e 's!^!$(BUILD_DIR)/!' >$@
 
 ifneq ($(MAKECMDGOALS),clean)
 -include $(DEPENDS)
 endif
 
 
-$(BIN_DIR):
-	mkdir -p $@
-$(OBJ_DIR):
+$(BUILD_DIR):
 	mkdir -p $@
 
 .PHONY: clean
 clean:
-	rm -rf $(BIN_DIR) $(OBJ_DIR)
+	rm -rf $(BUILD_DIR)
