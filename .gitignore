@@ -1,2 +1,8 @@
 .vscode
 build
+build.xml
+nbproject
+test
+manifest.mf
+input.txt
+*.class
