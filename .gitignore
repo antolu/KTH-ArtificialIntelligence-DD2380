@@ -6,3 +6,4 @@ test
 manifest.mf
 input.txt
 *.class
+*.in
