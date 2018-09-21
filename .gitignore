@@ -7,3 +7,6 @@ manifest.mf
 input.txt
 *.class
 *.in
+*.html
+*.css 
+*.js

@@ -1,12 +1,12 @@
-
+package matrix;
 import java.util.List;
 
 
 public class Matrix {
     
-    double[][] matrix;
-    int m;
-    int n;
+    private double[][] matrix;
+    public int m;
+    public int n;
     
     public Matrix(List<Double> coeff) {
         m = coeff.get(0).intValue();
@@ -91,7 +91,6 @@ public class Matrix {
         }
         return reString;
     }
-  
     
     public Matrix getColumn(int col) {
         Matrix column = new Matrix(m,1);
