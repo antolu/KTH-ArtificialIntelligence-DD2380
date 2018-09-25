@@ -2,7 +2,7 @@
 #include "constants.hpp"
 #include <cstdlib>
 
-#define DEPTH 3
+#define DEPTH 1
 
 namespace TICTACTOE3D
 {
