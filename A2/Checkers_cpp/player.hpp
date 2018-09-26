@@ -40,19 +40,19 @@ private:
      * 
      * @return The minimax value of the state
      */
-    int alphabeta(GameState & gamestate, int depth, int & alpha, int & beta, int player);
+    int alphabeta(GameState & gamestate, int depth, int alpha, int beta, uint8_t player);
 
     /**
      * @param gamestate The current state we are analying
      * 
      * @return Returns the utility of this game state.
      */
-    int utility(GameState & gamestate, int & depth);
+    int utility(GameState & gamestate, int depth);
 
-    uint8_t playerX;
-    uint8_t playerO;
-    const int me = 0;
-    const int opp = 1;
+    uint8_t me;
+    uint8_t opponent;
+    // const int me = 0;
+    // const int opp = 1;
     
     std::map<std::string, bool> visited;
 
