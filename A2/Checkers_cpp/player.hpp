@@ -30,7 +30,7 @@ private:
      * 
      * @return Returns the best move.
      */
-    std::pair<int, int> getBestMove(std::vector<GameState> lNextStates, int depth);
+    std::pair<int, int> getBestMove(std::vector<GameState> lNextStates, int depth, const Deadline & pDue);
 
     /**
      * @param gamestate The current state we are analyzing
@@ -41,14 +41,16 @@ private:
      * 
      * @return The minimax value of the state
      */
-    int alphabeta(GameState & gamestate, int depth, int alpha, int beta, uint8_t player);
+    int alphabeta(GameState & gamestate, int depth, int alpha, int beta, uint8_t player, const Deadline & pDue);
 
     /**
      * @param gamestate The current state we are analying
      * 
      * @return Returns the utility of this game state.
      */
-    int utility(GameState & gamestate);
+    int utility(GameState & gamestate, uint8_t player);
+
+    int hashState(GameState & gamestate);
 
     uint8_t me;
     uint8_t opponent;
@@ -56,8 +58,11 @@ private:
     // const int opp = 1;
     
     std::map<std::string, bool> visited;
+    std::map<int, int> moveOrdering;
 
-    static int const board[8][8];
+    std::map<uint8_t, int*> scoreboard;
+    static int scoreboardWhite[32];
+    static int scoreboardRed[32];
 };
 
 /*namespace checkers*/ }
