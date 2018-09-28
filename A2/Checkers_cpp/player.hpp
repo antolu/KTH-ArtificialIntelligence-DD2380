@@ -9,6 +9,7 @@
 #include <map>
 #include <algorithm>
 #include <utility>
+#include <iterator>
 
 namespace checkers
 {
@@ -47,7 +48,7 @@ private:
      * 
      * @return Returns the utility of this game state.
      */
-    int utility(GameState & gamestate, int depth);
+    int utility(GameState & gamestate);
 
     uint8_t me;
     uint8_t opponent;
