@@ -7,9 +7,9 @@ public class Player {
     private static final int CAPACITY = (int) 5e7;
     private static final int TIME_LIMIT =  (int) 2e8;
 
-    private Hashtable<Integer, Integer> lastScore = new Hashtable<>(CAPACITY);
-    private Hashtable<Integer, Integer> newScore = new Hashtable<>(CAPACITY);
-    private Hashtable<Integer, Integer> scoreDepth = new Hashtable<>(CAPACITY);
+    private Hashtable<Integer, Integer> lastScore = new Hashtable<Integer, Integer>(CAPACITY);
+    private Hashtable<Integer, Integer> newScore = new Hashtable<Integer, Integer>(CAPACITY);
+    private Hashtable<Integer, Integer> scoreDepth = new Hashtable<Integer, Integer>(CAPACITY);
 
     private int currentDepth = 1;
 
@@ -29,13 +29,12 @@ public class Player {
             return new GameState(pState, new Move());
         }
 
-        lastScore.clear();
+        // lastScore.clear();
 
         int bestScore = 0;
 
         for (int depth = 1; depth <= MAX_DEPTH; depth++) {
             currentDepth = depth;
-            Hashtable<Integer, Integer> temp = lastScore;
             lastScore = newScore;
             newScore.clear();
             scoreDepth.clear();
@@ -55,15 +54,25 @@ public class Player {
             }
         }
 
-        lastScore = newScore;
-        final int finalBestScore = bestScore;
-        return nextStates.stream()
-                .filter(move -> lastScore.containsKey(hashState(move)))
-                .filter(move -> lastScore.get(hashState(move)) == finalBestScore)
-                .findFirst().get();
+        lastScore = newScore; // Reset for next round
+        final int finalBestScore = bestScore; // To optimize memory
+        return nextStates.stream().filter(move -> lastScore.containsKey(hashState(move))).filter(move -> lastScore.get(hashState(move)) == finalBestScore).findFirst().get();
     }
 
+    /**
+     * Minimax algorithm with alpha/beta pruning, computes the best move for
+     * the player based on the current game state
+     * 
+     * @param pState The gamestate to be analyzed.
+     * @param depth The current search depth.
+     * @param alpha The previous alpha
+     * @param beta The previous beta
+     * @param player The player to maximize for
+     * 
+     * @return Returns the minimax value for the gamestate and player
+     */
     private int alphaBeta(GameState pState, int depth, int alpha, int beta, int player) {
+        /* If the state has already been visited, return the result from the previous search */
         int hash = hashState(pState);
         if (newScore.containsKey(hash) && scoreDepth.get(hash) >= depth) {
             return newScore.get(hash);
@@ -73,36 +82,42 @@ public class Player {
         if (pState.isEOG() || depth == 0) {
             bestPossible = eval(pState);
         } else {
+            /* Get the next possible states */
             Vector<GameState> possibleMoves = new Vector<>();
             pState.findPossibleMoves(possibleMoves);
             int numMoves = possibleMoves.size();
 
             List<GameState> exploredMoves;
 
+            /* Move ordering algorithm, only effective for depth > 1 */
             if (depth != 1) {
+                /* Retreieve previously visited states */
                 exploredMoves = possibleMoves.stream()
                         .filter(move -> lastScore.containsKey(hashState(move)))
                         .collect(Collectors.toList());
 
-                List<Integer> lastScores = exploredMoves.stream()
+                /* Retrieve the corresponting scores for the previously visited states */
+                List<Integer> scores = exploredMoves.stream()
                         .mapToInt(move -> lastScore.get(hashState(move)))
-                        .map(score -> player == Constants.CELL_RED ? -score : score)// reverse ordering for Red
+                        .map(score -> player == Constants.CELL_RED ? -score : score) 
                         .boxed().collect(Collectors.toList());
 
-                keySort(lastScores, exploredMoves);
+                /* Sort moves for move ordering */
+                keySort(scores, exploredMoves);
 
-                List<GameState> restMoves = possibleMoves.stream()
+                /* Retrieve non visited states (the rest) */
+                List<GameState> nonExploredMoves = possibleMoves.stream()
                         .filter(move -> !exploredMoves.contains(move))
                         .collect(Collectors.toList());
 
-                exploredMoves.addAll(restMoves);
+                /* Merge all next states into one list */
+                exploredMoves.addAll(nonExploredMoves);
             } else {
                 exploredMoves = possibleMoves;
             }
             int res;
             if (player == Constants.CELL_RED) {
                 bestPossible = Integer.MIN_VALUE;
-
                 for (int i = 0; i < numMoves; i++) {
                     res = alphaBeta(exploredMoves.get(i), depth - 1, alpha, beta, Constants.CELL_WHITE);
                     bestPossible = Math.max(res, bestPossible);
@@ -114,7 +129,6 @@ public class Player {
                 }
             } else if (player == Constants.CELL_WHITE) {
                 bestPossible = Integer.MAX_VALUE;
-
                 for (int i = 0; i < numMoves; i++) {
                     res = alphaBeta(exploredMoves.get(i), depth - 1, alpha, beta, Constants.CELL_RED);
                     bestPossible = Math.min(res, bestPossible);
@@ -127,6 +141,7 @@ public class Player {
             }
         }
 
+        /* Save the score if not at the end of the tree */
         if (currentDepth != MAX_DEPTH || depth != 0) {
             newScore.put(hash, bestPossible);
             scoreDepth.put(hash, depth);
@@ -135,6 +150,15 @@ public class Player {
         return bestPossible;
     }
 
+    /**
+     * Computes the utility value of the given gamestate
+     * using the naive method of simly computing the differing
+     * amount of markers between the two players.
+     * 
+     * @param pState The gamestate to be analyzed.
+     * 
+     * @return Returns the utility value of the state
+     */
     private int eval(GameState pState) {
         if (pState.isEOG()) {
             if (pState.isRedWin()) {
@@ -199,6 +223,13 @@ public class Player {
                 Collections.swap(list, e.getKey(), e.getValue());
     }
 
+    /**
+     * Computes a hash code for the given gamestate.
+     * 
+     * @param pState The gamestate to be hashed
+     * 
+     * @return Returns the hash value of the game state
+     */
     private int hashState(GameState pState) {
         int hash = pState.getNextPlayer();
         int marker;
