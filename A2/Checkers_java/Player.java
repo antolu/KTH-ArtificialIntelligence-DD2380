@@ -4,8 +4,8 @@ import java.util.stream.Collectors;
 
 public class Player {
     private static final int MAX_DEPTH = 16;
-    private static final int CAPACITY = (int) 5e6;
-    private static final int TIME_LIMIT =  (int) 1e8;
+    private static final int CAPACITY = (int) 5e7;
+    private static final int TIME_LIMIT =  (int) 2e8;
 
     private Hashtable<Integer, Integer> lastScore = new Hashtable<>(CAPACITY);
     private Hashtable<Integer, Integer> newScore = new Hashtable<>(CAPACITY);
@@ -26,7 +26,6 @@ public class Player {
         pState.findPossibleMoves(nextStates);
 
         if (nextStates.size() == 0) {
-            // Must play "pass" move if there are no other moves possible.
             return new GameState(pState, new Move());
         }
 
@@ -38,19 +37,19 @@ public class Player {
             currentDepth = depth;
             Hashtable<Integer, Integer> temp = lastScore;
             lastScore = newScore;
-            // newScore = temp;
             newScore.clear();
             scoreDepth.clear();
 
             int alpha = Integer.MIN_VALUE;
             int beta = Integer.MAX_VALUE;
-
             bestScore = alphaBeta(pState, depth, alpha, beta, pState.getNextPlayer());
 
+            /* Check if win */
             if (bestScore == Integer.MAX_VALUE) {
                 break;
             }
 
+            /* Abort if there's no time less */
             if (pDue.timeUntil() < TIME_LIMIT) {
                 break;
             }
@@ -71,12 +70,12 @@ public class Player {
         }
 
         int bestPossible = 0;
-
         if (pState.isEOG() || depth == 0) {
             bestPossible = eval(pState);
         } else {
             Vector<GameState> possibleMoves = new Vector<>();
             pState.findPossibleMoves(possibleMoves);
+            int numMoves = possibleMoves.size();
 
             List<GameState> exploredMoves;
 
@@ -100,12 +99,13 @@ public class Player {
             } else {
                 exploredMoves = possibleMoves;
             }
-
+            int res;
             if (player == Constants.CELL_RED) {
                 bestPossible = Integer.MIN_VALUE;
 
-                for (GameState move : exploredMoves) {
-                    bestPossible = Math.max(bestPossible, alphaBeta(move, depth - 1, alpha, beta, Constants.CELL_WHITE));
+                for (int i = 0; i < numMoves; i++) {
+                    res = alphaBeta(exploredMoves.get(i), depth - 1, alpha, beta, Constants.CELL_WHITE);
+                    bestPossible = Math.max(res, bestPossible);
                     alpha = Math.max(alpha, bestPossible);
 
                     if (beta <= alpha) {
@@ -115,8 +115,9 @@ public class Player {
             } else if (player == Constants.CELL_WHITE) {
                 bestPossible = Integer.MAX_VALUE;
 
-                for (GameState move : exploredMoves) {
-                    bestPossible = Math.min(bestPossible, alphaBeta(move, depth - 1, alpha, beta, Constants.CELL_RED));
+                for (int i = 0; i < numMoves; i++) {
+                    res = alphaBeta(exploredMoves.get(i), depth - 1, alpha, beta, Constants.CELL_RED);
+                    bestPossible = Math.min(res, bestPossible);
                     beta = Math.min(beta, bestPossible);
 
                     if (beta <= alpha) {
