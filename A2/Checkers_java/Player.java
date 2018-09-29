@@ -4,30 +4,30 @@ import java.util.stream.Collectors;
 
 public class Player {
     private static final int MAX_DEPTH = 16;
-
-    private static final int CAPACITY = 32000000;
-
-    private static final int TIME_LEFT_THRESHOLD =  300000000;
+    private static final int CAPACITY = (int) 5e6;
+    private static final int TIME_LIMIT =  (int) 1e8;
 
     private Hashtable<Integer, Integer> lastScore = new Hashtable<>(CAPACITY);
     private Hashtable<Integer, Integer> newScore = new Hashtable<>(CAPACITY);
     private Hashtable<Integer, Integer> scoreDepth = new Hashtable<>(CAPACITY);
 
+    private int currentDepth = 1;
+
     /**
      * Performs a move
      *
-     * @param gameState the current state of the board
+     * @param pState the current state of the board
      * @param pDue  time before which we must have returned
      * @return the next state the board is in after our move
      */
-    public GameState play(final GameState gameState, final Deadline pDue) {
+    public GameState play(final GameState pState, final Deadline pDue) {
 
         Vector<GameState> nextStates = new Vector<GameState>();
-        gameState.findPossibleMoves(nextStates);
+        pState.findPossibleMoves(nextStates);
 
         if (nextStates.size() == 0) {
             // Must play "pass" move if there are no other moves possible.
-            return new GameState(gameState, new Move());
+            return new GameState(pState, new Move());
         }
 
         lastScore.clear();
@@ -35,22 +35,23 @@ public class Player {
         int bestScore = 0;
 
         for (int depth = 1; depth <= MAX_DEPTH; depth++) {
+            currentDepth = depth;
             Hashtable<Integer, Integer> temp = lastScore;
             lastScore = newScore;
-            newScore = temp;
+            // newScore = temp;
             newScore.clear();
             scoreDepth.clear();
 
             int alpha = Integer.MIN_VALUE;
             int beta = Integer.MAX_VALUE;
 
-            bestScore = alphaBeta(gameState, depth, alpha, beta, gameState.getNextPlayer(), depth);
+            bestScore = alphaBeta(pState, depth, alpha, beta, pState.getNextPlayer());
 
             if (bestScore == Integer.MAX_VALUE) {
                 break;
             }
 
-            if (pDue.timeUntil() < TIME_LEFT_THRESHOLD) {
+            if (pDue.timeUntil() < TIME_LIMIT) {
                 break;
             }
         }
@@ -59,45 +60,33 @@ public class Player {
         final int finalBestScore = bestScore;
         return nextStates.stream()
                 .filter(move -> lastScore.containsKey(hashState(move)))
-                .filter(move -> getLastScore(move) == finalBestScore)
+                .filter(move -> lastScore.get(hashState(move)) == finalBestScore)
                 .findFirst().get();
     }
 
-    private int getLastScore(GameState gameState) {
-        return lastScore.get(hashState(gameState));
-    }
-
-    private int alphaBeta(GameState gameState, int depth, int alpha, int beta, int player, int totalDepth) {
-        int h = hashState(gameState);
-        if (newScore.containsKey(h) && scoreDepth.get(h) >= depth) {
-            return newScore.get(h);
+    private int alphaBeta(GameState pState, int depth, int alpha, int beta, int player) {
+        int hash = hashState(pState);
+        if (newScore.containsKey(hash) && scoreDepth.get(hash) >= depth) {
+            return newScore.get(hash);
         }
 
         int bestPossible = 0;
 
-        if (gameState.isEOG()) {
-            if (gameState.isRedWin()) {
-                bestPossible = Integer.MAX_VALUE;
-            } else if (gameState.isWhiteWin()) {
-                bestPossible = Integer.MIN_VALUE;
-            } else {
-                bestPossible = 0;
-            }
-        } else if (depth == 0) {
-            bestPossible = eval(gameState);
+        if (pState.isEOG() || depth == 0) {
+            bestPossible = eval(pState);
         } else {
             Vector<GameState> possibleMoves = new Vector<>();
-            gameState.findPossibleMoves(possibleMoves);
+            pState.findPossibleMoves(possibleMoves);
 
             List<GameState> exploredMoves;
 
             if (depth != 1) {
                 exploredMoves = possibleMoves.stream()
-                        .filter(move -> lastScore.containsKey(new HashableGameState(move)))
+                        .filter(move -> lastScore.containsKey(hashState(move)))
                         .collect(Collectors.toList());
 
                 List<Integer> lastScores = exploredMoves.stream()
-                        .mapToInt(move -> getLastScore(move))
+                        .mapToInt(move -> lastScore.get(hashState(move)))
                         .map(score -> player == Constants.CELL_RED ? -score : score)// reverse ordering for Red
                         .boxed().collect(Collectors.toList());
 
@@ -116,7 +105,7 @@ public class Player {
                 bestPossible = Integer.MIN_VALUE;
 
                 for (GameState move : exploredMoves) {
-                    bestPossible = Math.max(bestPossible, alphaBeta(move, depth - 1, alpha, beta, Constants.CELL_WHITE, totalDepth));
+                    bestPossible = Math.max(bestPossible, alphaBeta(move, depth - 1, alpha, beta, Constants.CELL_WHITE));
                     alpha = Math.max(alpha, bestPossible);
 
                     if (beta <= alpha) {
@@ -127,7 +116,7 @@ public class Player {
                 bestPossible = Integer.MAX_VALUE;
 
                 for (GameState move : exploredMoves) {
-                    bestPossible = Math.min(bestPossible, alphaBeta(move, depth - 1, alpha, beta, Constants.CELL_RED, totalDepth));
+                    bestPossible = Math.min(bestPossible, alphaBeta(move, depth - 1, alpha, beta, Constants.CELL_RED));
                     beta = Math.min(beta, bestPossible);
 
                     if (beta <= alpha) {
@@ -137,39 +126,48 @@ public class Player {
             }
         }
 
-        if (totalDepth != MAX_DEPTH || depth != 0) {
-            newScore.put(h, bestPossible);
-            scoreDepth.put(h, depth);
+        if (currentDepth != MAX_DEPTH || depth != 0) {
+            newScore.put(hash, bestPossible);
+            scoreDepth.put(hash, depth);
         }
 
         return bestPossible;
     }
 
     private int eval(GameState pState) {
-        int whiteSum = 0;
-        int redSum = 0;
-
-        for (int i = 0; i < 32; i++) {
-
-            if (pState.get(i) == Constants.CELL_WHITE) {
-                whiteSum += 1;
-            } else if (pState.get(i) == Constants.CELL_RED) {
-                redSum += 1;
-            }
-            
-            if (pState.get(i)  == (Constants.CELL_WHITE | Constants.CELL_KING)) {
-                whiteSum += 1;
-            } else if (pState.get(i) == (Constants.CELL_RED | Constants.CELL_KING)) {
-                redSum += 1;
+        if (pState.isEOG()) {
+            if (pState.isRedWin()) {
+                return Integer.MAX_VALUE;
+            } else if (pState.isWhiteWin()) {
+                return Integer.MIN_VALUE;
+            } else {
+                return 0;
             }
         }
 
-        return redSum - whiteSum;
+        int whiteMarkers = 0;
+        int redMarkers = 0;
+        int marker;
+
+        for (int i = 0; i < 32; i++) {
+            marker = pState.get(i);
+            if (marker == Constants.CELL_WHITE) {
+                whiteMarkers++;
+            } else if (marker == Constants.CELL_RED) {
+                redMarkers++;
+            }
+            
+            if (marker  == (Constants.CELL_WHITE | Constants.CELL_KING)) {
+                whiteMarkers++;
+            } else if (marker == (Constants.CELL_RED | Constants.CELL_KING)) {
+                redMarkers++;
+            }
+        }
+
+        return redMarkers - whiteMarkers;
     }
 
-    // This algorithm is due to stackoverflow.com user "bcorso"
-    public static <T extends Comparable<T>> void keySort(
-            final List<T> key, List<?>... lists){
+    public static <T extends Comparable<T>> void keySort(final List<T> key, List<?>... lists) {
         // Create a List of indices
         List<Integer> indices = new ArrayList<Integer>();
         for(int i = 0; i < key.size(); i++)
