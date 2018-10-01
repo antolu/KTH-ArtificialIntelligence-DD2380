@@ -12,10 +12,13 @@
 Possible states: all legal moves. 
 Transition function: makes a valid move. 
 
-2. Checkers: 
+Otherwise generally speaking, the initial state is the initial setup of the game, the possible states represent all valid states we can transition to, and the transition functions transitions from s to s' using the move a.
+
+2. 
+Checkers: 
 * Red win: only red markers remaining.
 * White win: only white markers remaining.
-* Draw: no valid moves remaining. 
+* Other win: no valid moves for opponent remaining. 
 * Draw: no capture within last 50 turns.
 
 Tic-tac-toe: 
@@ -25,11 +28,11 @@ Tic-tac-toe:
 
 3. The point of the game is to outplay your opponent, ie capturing all the opponents markers. Thus maximizing the number of markers on your side, while minimizing the opponents markers (to zero). 
 
-4. When the game is over. A utility function gives value for terminal state typically (+1,-1,0)
+4. When the game is over. A utility function gives value for terminal state typically (+1,-1,0), thus the evaluation function is most similar to the utility function when the game is over. 
 
 5. The marker in checkers may make several jumps within one turn if the opponents markers are lined up "properly". Thus several markers may be captured in one turn, and one can win the game, even if the naive heuristic does not favor you. 
 
-6. Theoretically, it should not, since the heuristic direclty counts the probability of achieving victory. However the downside of this is that the heuristic does not evaluate "better" boards and may not lead the player into a winning scenario if the opponent is smart. 
+6. Theoretically, it should not, since the heuristic directly counts the probability of achieving victory. However the downside of this is, as least how I've understood the question, that one needs to go to the bottom of the tree to determine if the current branch has wins or not. And in this case one could simply just use a normal utility function instead, can they not?
 
 # Answers to other questions
 
