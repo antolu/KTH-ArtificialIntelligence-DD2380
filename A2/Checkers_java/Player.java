@@ -3,15 +3,40 @@ import java.lang.*;
 import java.util.stream.Collectors;
 
 public class Player {
-    private static final int MAX_DEPTH = 16;
+    private static final int MAX_DEPTH = 12;
     private static final int CAPACITY = (int) 5e7;
     private static final int TIME_LIMIT =  (int) 2e8;
 
     private Hashtable<Integer, Integer> lastScore = new Hashtable<Integer, Integer>(CAPACITY);
     private Hashtable<Integer, Integer> newScore = new Hashtable<Integer, Integer>(CAPACITY);
     private Hashtable<Integer, Integer> scoreDepth = new Hashtable<Integer, Integer>(CAPACITY);
+    private Hashtable <Integer, Integer[]> scoreboards = new Hashtable<Integer, Integer[]>();
 
     private int currentDepth = 1;
+    private int me = 0;
+    private int opponent = 0;
+
+    private final Integer[] scoreboardRed = {
+        2, 0, 0, 2, 
+      2, 0, 0, 1, 
+        0, 0, 0, 2,
+      2, 1, 1, 1, 
+        1, 1, 1, 2, 
+      2, 2, 2, 2, 
+        2, 2, 2, 3,
+      4, 3, 3, 4
+  };
+
+    private final Integer[] scoreboardWhite = {
+        4, 3, 3, 4,
+    3, 2, 2, 2, 
+        2, 2, 2, 2, 
+    2, 1, 1, 1, 
+        1, 1, 1, 2, 
+    2, 0, 0, 0,
+        1, 0, 0, 2,
+    2, 0, 0, 2
+    };
 
     /**
      * Performs a move
@@ -21,6 +46,18 @@ public class Player {
      * @return the next state the board is in after our move
      */
     public GameState play(final GameState pState, final Deadline pDue) {
+
+        me = pState.getNextPlayer();
+        if (me == Constants.CELL_RED) {
+            opponent = Constants.CELL_WHITE;
+            scoreboards.put(me, scoreboardRed);
+            scoreboards.put(opponent, scoreboardWhite);
+        }
+        else {
+            opponent = Constants.CELL_RED;
+            scoreboards.put(opponent, scoreboardRed);
+            scoreboards.put(me, scoreboardWhite);
+        }
 
         Vector<GameState> nextStates = new Vector<GameState>();
         pState.findPossibleMoves(nextStates);
@@ -41,7 +78,7 @@ public class Player {
 
             int alpha = Integer.MIN_VALUE;
             int beta = Integer.MAX_VALUE;
-            bestScore = alphaBeta(pState, depth, alpha, beta, pState.getNextPlayer());
+            bestScore = alphaBeta(pState, depth, alpha, beta, me);
 
             /* Check if win */
             if (bestScore == Integer.MAX_VALUE) {
@@ -99,7 +136,7 @@ public class Player {
                 /* Retrieve the corresponting scores for the previously visited states */
                 List<Integer> scores = exploredMoves.stream()
                         .mapToInt(move -> lastScore.get(hashState(move)))
-                        .map(score -> player == Constants.CELL_RED ? -score : score) 
+                        .map(score -> player == me ? -score : score) 
                         .boxed().collect(Collectors.toList());
 
                 /* Sort moves for move ordering */
@@ -116,10 +153,10 @@ public class Player {
                 exploredMoves = possibleMoves;
             }
             int res;
-            if (player == Constants.CELL_RED) {
+            if (player == me) {
                 bestPossible = Integer.MIN_VALUE;
                 for (int i = 0; i < numMoves; i++) {
-                    res = alphaBeta(exploredMoves.get(i), depth - 1, alpha, beta, Constants.CELL_WHITE);
+                    res = alphaBeta(exploredMoves.get(i), depth - 1, alpha, beta, opponent);
                     bestPossible = Math.max(res, bestPossible);
                     alpha = Math.max(alpha, bestPossible);
 
@@ -127,10 +164,10 @@ public class Player {
                         break;
                     }
                 }
-            } else if (player == Constants.CELL_WHITE) {
+            } else if (player == opponent) {
                 bestPossible = Integer.MAX_VALUE;
                 for (int i = 0; i < numMoves; i++) {
-                    res = alphaBeta(exploredMoves.get(i), depth - 1, alpha, beta, Constants.CELL_RED);
+                    res = alphaBeta(exploredMoves.get(i), depth - 1, alpha, beta, me);
                     bestPossible = Math.min(res, bestPossible);
                     beta = Math.min(beta, bestPossible);
 
@@ -161,35 +198,53 @@ public class Player {
      */
     private int eval(GameState pState) {
         if (pState.isEOG()) {
-            if (pState.isRedWin()) {
+            if ((pState.isRedWin() && me == Constants.CELL_RED) || (pState.isWhiteWin() && me == Constants.CELL_WHITE)) {
                 return Integer.MAX_VALUE;
-            } else if (pState.isWhiteWin()) {
+            } else if ((pState.isRedWin() && me == Constants.CELL_WHITE) || (pState.isWhiteWin() && me == Constants.CELL_RED)) {
                 return Integer.MIN_VALUE;
             } else {
                 return 0;
             }
         }
 
-        int whiteMarkers = 0;
-        int redMarkers = 0;
+        int opponentMarkers = 0;
+        int myMarkers = 0;
         int marker;
 
         for (int i = 0; i < 32; i++) {
             marker = pState.get(i);
-            if (marker == Constants.CELL_WHITE) {
-                whiteMarkers++;
-            } else if (marker == Constants.CELL_RED) {
-                redMarkers++;
+            if (marker == opponent) {
+                opponentMarkers += 2;
+                opponentMarkers += scoreboards.get(opponent)[i];
+            } else if (marker == me) {
+                myMarkers += 2;
+                myMarkers += scoreboards.get(me)[i];
             }
             
             if (marker  == (Constants.CELL_WHITE | Constants.CELL_KING)) {
-                whiteMarkers++;
+                if (me == Constants.CELL_WHITE) {
+                    myMarkers += 5;
+                    myMarkers += scoreboardWhite[i];
+                }
+                else 
+                {
+                    opponentMarkers += 5;
+                    opponentMarkers += scoreboardWhite[i];
+                }
             } else if (marker == (Constants.CELL_RED | Constants.CELL_KING)) {
-                redMarkers++;
+                if (me == Constants.CELL_RED) {
+                    myMarkers += 5;
+                    myMarkers += scoreboardRed[i];
+                }
+                else 
+                {
+                    opponentMarkers += 5;
+                    opponentMarkers += scoreboardRed[i];
+                }
             }
         }
 
-        return redMarkers - whiteMarkers;
+        return myMarkers - opponentMarkers;
     }
 
     public static <T extends Comparable<T>> void keySort(final List<T> key, List<?>... lists) {
