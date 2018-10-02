@@ -4,12 +4,11 @@ import java.util.stream.Collectors;
 
 public class Player {
     private static final int MAX_DEPTH = 12;
-    private static final int CAPACITY = (int) 5e7;
     private static final int TIME_LIMIT =  (int) 2e8;
 
-    private Hashtable<Integer, Integer> lastScore = new Hashtable<Integer, Integer>(CAPACITY);
-    private Hashtable<Integer, Integer> newScore = new Hashtable<Integer, Integer>(CAPACITY);
-    private Hashtable<Integer, Integer> scoreDepth = new Hashtable<Integer, Integer>(CAPACITY);
+    private Hashtable<Integer, Integer> lastSearch = new Hashtable<Integer, Integer>(50000000);
+    private Hashtable<Integer, Integer> thisSearch = new Hashtable<Integer, Integer>(50000000);
+    private Hashtable<Integer, Integer> scoreDepth = new Hashtable<Integer, Integer>(50000000);
     private Hashtable <Integer, Integer[]> scoreboards = new Hashtable<Integer, Integer[]>();
 
     private int currentDepth = 1;
@@ -66,22 +65,20 @@ public class Player {
             return new GameState(pState, new Move());
         }
 
-        // lastScore.clear();
-
-        int bestScore = 0;
+        int bestPossible = 0;
 
         for (int depth = 1; depth <= MAX_DEPTH; depth++) {
             currentDepth = depth;
-            lastScore = newScore;
-            newScore.clear();
+            lastSearch = thisSearch;
+            thisSearch.clear();
             scoreDepth.clear();
 
             int alpha = Integer.MIN_VALUE;
             int beta = Integer.MAX_VALUE;
-            bestScore = alphaBeta(pState, depth, alpha, beta, me);
+            bestPossible = alphaBeta(pState, depth, alpha, beta, me);
 
             /* Check if win */
-            if (bestScore == Integer.MAX_VALUE) {
+            if (bestPossible == Integer.MAX_VALUE) {
                 break;
             }
 
@@ -91,9 +88,9 @@ public class Player {
             }
         }
 
-        lastScore = newScore; // Reset for next round
-        final int finalBestScore = bestScore; // To optimize memory
-        return nextStates.stream().filter(move -> lastScore.containsKey(hashState(move))).filter(move -> lastScore.get(hashState(move)) == finalBestScore).findFirst().get();
+        lastSearch = thisSearch; // Reset for next round
+        final int finalBestScore = bestPossible; // To optimize memory
+        return nextStates.stream().filter(move -> lastSearch.containsKey(hashState(move))).filter(move -> lastSearch.get(hashState(move)) == finalBestScore).findFirst().get();
     }
 
     /**
@@ -111,8 +108,8 @@ public class Player {
     private int alphaBeta(GameState pState, int depth, int alpha, int beta, int player) {
         /* If the state has already been visited, return the result from the previous search */
         int hash = hashState(pState);
-        if (newScore.containsKey(hash) && scoreDepth.get(hash) >= depth) {
-            return newScore.get(hash);
+        if (thisSearch.containsKey(hash) && scoreDepth.get(hash) >= depth) {
+            return thisSearch.get(hash);
         }
 
         int bestPossible = 0;
@@ -129,23 +126,16 @@ public class Player {
             /* Move ordering algorithm, only effective for depth > 1 */
             if (depth != 1) {
                 /* Retreieve previously visited states */
-                exploredMoves = possibleMoves.stream()
-                        .filter(move -> lastScore.containsKey(hashState(move)))
-                        .collect(Collectors.toList());
+                exploredMoves = possibleMoves.stream().filter(move -> lastSearch.containsKey(hashState(move))).collect(Collectors.toList());
 
                 /* Retrieve the corresponting scores for the previously visited states */
-                List<Integer> scores = exploredMoves.stream()
-                        .mapToInt(move -> lastScore.get(hashState(move)))
-                        .map(score -> player == me ? -score : score) 
-                        .boxed().collect(Collectors.toList());
+                List<Integer> scores = exploredMoves.stream().mapToInt(move -> lastSearch.get(hashState(move))).map(score -> player == me ? -score : score).boxed().collect(Collectors.toList());
 
                 /* Sort moves for move ordering */
                 keySort(scores, exploredMoves);
 
                 /* Retrieve non visited states (the rest) */
-                List<GameState> nonExploredMoves = possibleMoves.stream()
-                        .filter(move -> !exploredMoves.contains(move))
-                        .collect(Collectors.toList());
+                List<GameState> nonExploredMoves = possibleMoves.stream().filter(move -> !exploredMoves.contains(move)).collect(Collectors.toList());
 
                 /* Merge all next states into one list */
                 exploredMoves.addAll(nonExploredMoves);
@@ -180,7 +170,7 @@ public class Player {
 
         /* Save the score if not at the end of the tree */
         if (currentDepth != MAX_DEPTH || depth != 0) {
-            newScore.put(hash, bestPossible);
+            thisSearch.put(hash, bestPossible);
             scoreDepth.put(hash, depth);
         }
 
@@ -291,7 +281,7 @@ public class Player {
 
         for (int i = 0; i < 32; i++) {
             marker = pState.get(i);
-            hash *= 31;
+            hash *= 37;
             hash += marker;
         }
 
