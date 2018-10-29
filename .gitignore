@@ -10,3 +10,9 @@ input.txt
 *.html
 *.css 
 *.js
+solution.pddl
+*.fls
+*.log
+*.aux
+*.fdb_latexmk
+*.synctex.gz
